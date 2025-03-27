@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  app:
+    build: 
+      context: nodejs
+    networks:
+      - node-network
+    volumes:
+      - ./nodejs:/usr/src/app
+    tty: true
+    container_name: app
+    ports:
+      - 3000:3000
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: mysql
+    restart: always
+    container_name: mysql-db
+    tty: true
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./mysql.cnf:/etc/mysql/conf.d/mysql.cnf
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: nodedb
+    networks:
+      - node-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      retries: 1
+      timeout: 0s
+  nginx:
+    build: 
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: mdethae/nginx:latest
+    container_name: nginx
+    networks: 
+      - node-network
+    ports: 
+      - "8080:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  node-network:
+    driver: bridge
